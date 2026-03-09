@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
-import { Tv, Star, ChevronRight, ThumbsUp, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import type { ActivityLog, ActivityAction } from "@/types";
 
 const ACTION_LABELS: Record<ActivityAction, (metadata: any) => string> = {
