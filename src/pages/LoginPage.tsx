@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { LogIn, Mail, Lock, Eye, EyeOff, Play, Star, Users, List } from "lucide-react";
 import heroImage from "@/assets/hero-anime.jpg";
 
