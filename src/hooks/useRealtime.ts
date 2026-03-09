@@ -74,13 +74,13 @@ export function useActivityFeed(circleId?: string) {
     malId?: number,
     metadata?: Record<string, unknown>
   ) {
-    await supabase.from("activity_log").insert({
+    await supabase.from("activity_log").insert([{
       user_id: userId,
-      circle_id: circleId,
+      circle_id: circleId ?? null,
       action,
-      mal_id: malId,
-      metadata: metadata || {},
-    });
+      mal_id: malId ?? null,
+      metadata: (metadata || {}) as any,
+    }]);
   }
 
   return { activities, loading, logActivity, refetch: fetchActivities };
