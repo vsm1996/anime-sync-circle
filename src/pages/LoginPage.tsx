@@ -27,7 +27,14 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  const navigate = useNavigate();
+  const { user } = useAuthContext();
   const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) navigate("/dashboard", { replace: true });
+  }, [user, navigate]);
 
   async function handleGoogleSignIn() {
     setLoading(true);
@@ -42,16 +49,22 @@ export default function LoginPage() {
     setError("");
     setMessage("");
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({
+      const { error, data } = await supabase.auth.signUp({
         email,
         password,
         options: { emailRedirectTo: `${window.location.origin}/` },
       });
       if (error) setError(error.message);
-      else setMessage("Check your email to confirm your account!");
+      else if (data.session) {
+        // Auto-confirm is on — session is returned immediately
+        navigate("/dashboard", { replace: true });
+      } else {
+        setMessage("Check your email to confirm your account!");
+      }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError(error.message);
+      // On success, onAuthStateChange in useAuth will update user → useEffect above redirects
     }
     setLoading(false);
   }
