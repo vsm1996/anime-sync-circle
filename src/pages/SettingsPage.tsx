@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Save, Loader2 } from "lucide-react";
+import { Save, Loader2, Lock, Eye, EyeOff } from "lucide-react";
 
 export default function SettingsPage() {
   const { user, profile } = useAuthContext();
