@@ -9,27 +9,16 @@ type SignInOptions = {
 export const lovable = {
   auth: {
     signInWithOAuth: async (provider: "google" | "apple", opts?: SignInOptions) => {
-      const result = await lovableAuth.signInWithOAuth(provider, {
-        redirect_uri: opts?.redirect_uri,
-        extraParams: {
-          ...opts?.extraParams,
+      const redirectTo = opts?.redirect_uri || `${window.location.origin}/auth/callback`;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo,
+          queryParams: opts?.extraParams,
         },
       });
-
-      if (result.redirected) {
-        return result;
-      }
-
-      if (result.error) {
-        return result;
-      }
-
-      try {
-        await supabase.auth.setSession(result.tokens);
-      } catch (e) {
-        return { error: e instanceof Error ? e : new Error(String(e)) };
-      }
-      return result;
+      if (error) return { error };
+      return { data, redirected: true };
     },
   },
 };
