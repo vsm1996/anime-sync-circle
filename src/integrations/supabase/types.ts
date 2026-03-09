@@ -14,7 +14,319 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activity_log: {
+        Row: {
+          action: string
+          circle_id: string | null
+          created_at: string | null
+          id: string
+          mal_id: number | null
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          circle_id?: string | null
+          created_at?: string | null
+          id?: string
+          mal_id?: number | null
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          circle_id?: string | null
+          created_at?: string | null
+          id?: string
+          mal_id?: number | null
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "circles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      anime_cache: {
+        Row: {
+          cached_at: string | null
+          episodes: number | null
+          genres: string[] | null
+          image_url: string | null
+          mal_id: number
+          score: number | null
+          status: string | null
+          synopsis: string | null
+          title: string
+          title_english: string | null
+        }
+        Insert: {
+          cached_at?: string | null
+          episodes?: number | null
+          genres?: string[] | null
+          image_url?: string | null
+          mal_id: number
+          score?: number | null
+          status?: string | null
+          synopsis?: string | null
+          title: string
+          title_english?: string | null
+        }
+        Update: {
+          cached_at?: string | null
+          episodes?: number | null
+          genres?: string[] | null
+          image_url?: string | null
+          mal_id?: number
+          score?: number | null
+          status?: string | null
+          synopsis?: string | null
+          title?: string
+          title_english?: string | null
+        }
+        Relationships: []
+      }
+      circle_members: {
+        Row: {
+          circle_id: string
+          joined_at: string | null
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          circle_id: string
+          joined_at?: string | null
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          circle_id?: string
+          joined_at?: string | null
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_members_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "circles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circles: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          invite_code: string | null
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          invite_code?: string | null
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          invite_code?: string | null
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string
+          updated_at: string | null
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id: string
+          updated_at?: string | null
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          updated_at?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
+      shared_watchlists: {
+        Row: {
+          added_by: string | null
+          circle_id: string | null
+          created_at: string | null
+          id: string
+          mal_id: number
+          priority: number | null
+          status: string | null
+          votes: number | null
+        }
+        Insert: {
+          added_by?: string | null
+          circle_id?: string | null
+          created_at?: string | null
+          id?: string
+          mal_id: number
+          priority?: number | null
+          status?: string | null
+          votes?: number | null
+        }
+        Update: {
+          added_by?: string | null
+          circle_id?: string | null
+          created_at?: string | null
+          id?: string
+          mal_id?: number
+          priority?: number | null
+          status?: string | null
+          votes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_watchlists_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_watchlists_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "circles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watch_entries: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          episodes_watched: number | null
+          id: string
+          mal_id: number
+          notes: string | null
+          rating: number | null
+          started_at: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          episodes_watched?: number | null
+          id?: string
+          mal_id: number
+          notes?: string | null
+          rating?: number | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          episodes_watched?: number | null
+          id?: string
+          mal_id?: number
+          notes?: string | null
+          rating?: number | null
+          started_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watch_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watchlist_votes: {
+        Row: {
+          user_id: string
+          vote: number | null
+          watchlist_id: string
+        }
+        Insert: {
+          user_id: string
+          vote?: number | null
+          watchlist_id: string
+        }
+        Update: {
+          user_id?: string
+          vote?: number | null
+          watchlist_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watchlist_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watchlist_votes_watchlist_id_fkey"
+            columns: ["watchlist_id"]
+            isOneToOne: false
+            referencedRelation: "shared_watchlists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
