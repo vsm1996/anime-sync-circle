@@ -13,9 +13,11 @@ const FEATURES = [
 ];
 
 const QUOTES = [
-  { text: "A dropout will beat a genius through hard work.", author: "Rock Lee" },
-  { text: "If you don't take risks, you can't create a future.", author: "Monkey D. Luffy" },
-  { text: "The only ones who should kill are those prepared to be killed.", author: "Lelouch" },
+  { text: "I'm gonna be King of the Pirates!", author: "Monkey D. Luffy" },
+  { text: "Believe it!", author: "Naruto Uzumaki" },
+  { text: "Plus Ultra!!", author: "All Might" },
+  { text: "Go beyond. PLUS ULTRA!", author: "Izuku Midoriya" },
+  { text: "I'll take a potato chip... and eat it.", author: "Light Yagami" },
 ];
 
 export default function LoginPage() {
