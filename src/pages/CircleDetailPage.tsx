@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, NavLink } from "react-router-dom";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useSharedWatchlist } from "@/hooks/useSharedWatchlist";
