@@ -13,6 +13,7 @@ import CircleDetailPage from "@/pages/CircleDetailPage";
 import SearchPage from "@/pages/SearchPage";
 import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "./pages/NotFound";
+import AuthCallbackPage from "@/pages/AuthCallbackPage";
 
 const queryClient = new QueryClient();
 
