@@ -6,12 +6,11 @@ import { renderHook, act } from "@testing-library/react";
 // ---------------------------------------------------------------------------
 type AnyFn = (...args: unknown[]) => unknown;
 
-// A flexible chainable object that resolves to `resolveWith` when awaited.
 function buildChain(resolveWith: { data: unknown; error: unknown }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chain: any = {};
   const terminal = Promise.resolve(resolveWith);
-  ["select", "insert", "eq", "single", "update", "delete", "upsert"].forEach((m) => {
+  ["select", "insert", "eq", "single", "update", "delete", "upsert", "order", "limit", "in"].forEach((m) => {
     chain[m] = vi.fn(() => chain);
   });
   chain.then = (res: AnyFn, rej: AnyFn) => terminal.then(res, rej);
@@ -22,16 +21,16 @@ function buildChain(resolveWith: { data: unknown; error: unknown }) {
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: vi.fn(),
+    rpc: vi.fn(),
   },
 }));
 
-// Import AFTER mock is set up
-import { useCircles } from "./useCircles";
+import { useCircles, useCircleMembers } from "./useCircles";
 import { supabase } from "@/integrations/supabase/client";
 
 const mockFrom = vi.mocked(supabase.from);
+const mockRpc = vi.mocked(supabase.rpc);
 
-// Helper: wait until predicate passes (replaces waitFor)
 async function pollUntil(predicate: () => boolean, timeoutMs = 3000) {
   const start = Date.now();
   while (!predicate()) {
@@ -40,13 +39,20 @@ async function pollUntil(predicate: () => boolean, timeoutMs = 3000) {
   }
 }
 
+const fakeCircle = {
+  id: "c1",
+  name: "Test Circle",
+  description: null,
+  invite_code: "abc123",
+  created_by: "u1",
+  created_at: null,
+};
+
 // ---------------------------------------------------------------------------
-// Tests
+// useCircles
 // ---------------------------------------------------------------------------
 describe("useCircles", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it("does not fetch when userId is undefined", async () => {
     const { result } = renderHook(() => useCircles(undefined));
@@ -56,14 +62,6 @@ describe("useCircles", () => {
   });
 
   it("fetches and returns circles for a given userId", async () => {
-    const fakeCircle = {
-      id: "c1",
-      name: "Test Circle",
-      description: null,
-      invite_code: "abc123",
-      created_by: "u1",
-      created_at: null,
-    };
     mockFrom.mockReturnValue(buildChain({ data: [{ circles: fakeCircle }], error: null }));
 
     const { result } = renderHook(() => useCircles("u1"));
@@ -83,13 +81,21 @@ describe("useCircles", () => {
     expect(result.current.circles).toEqual([]);
   });
 
-  it("createCircle propagates db error", async () => {
-    const pgError = { message: "duplicate key value violates unique constraint" };
+  it("filters out null circles entries", async () => {
+    mockFrom.mockReturnValue(
+      buildChain({ data: [{ circles: fakeCircle }, { circles: null }], error: null })
+    );
 
-    // mount fetch → empty list; insert → error
-    mockFrom
-      .mockReturnValueOnce(buildChain({ data: [], error: null }))
-      .mockReturnValueOnce(buildChain({ data: null, error: pgError }));
+    const { result } = renderHook(() => useCircles("u1"));
+    await pollUntil(() => !result.current.loading);
+
+    expect(result.current.circles).toHaveLength(1);
+  });
+
+  it("createCircle propagates rpc error", async () => {
+    const pgError = { message: "failed to create circle" };
+    mockFrom.mockReturnValue(buildChain({ data: [], error: null }));
+    mockRpc.mockResolvedValueOnce({ data: null, error: pgError } as any);
 
     const { result } = renderHook(() => useCircles("u1"));
     await pollUntil(() => !result.current.loading);
@@ -97,27 +103,17 @@ describe("useCircles", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let outcome: any;
     await act(async () => {
-      outcome = await result.current.createCircle("Bad Circle", "", "u1");
+      outcome = await result.current.createCircle("Bad Circle", "");
     });
 
     expect(outcome.error).toEqual(pgError);
   });
 
   it("createCircle succeeds and refreshes circles list", async () => {
-    const newCircle = {
-      id: "c2",
-      name: "New Circle",
-      description: null,
-      invite_code: "xyz",
-      created_by: "u1",
-      created_at: null,
-    };
-
     mockFrom
-      .mockReturnValueOnce(buildChain({ data: [], error: null }))                          // initial fetch
-      .mockReturnValueOnce(buildChain({ data: newCircle, error: null }))                   // insert circle
-      .mockReturnValueOnce(buildChain({ data: null, error: null }))                        // add owner member
-      .mockReturnValueOnce(buildChain({ data: [{ circles: newCircle }], error: null }));   // re-fetch
+      .mockReturnValueOnce(buildChain({ data: [], error: null }))
+      .mockReturnValueOnce(buildChain({ data: [{ circles: fakeCircle }], error: null }));
+    mockRpc.mockResolvedValueOnce({ data: "c1", error: null } as any);
 
     const { result } = renderHook(() => useCircles("u1"));
     await pollUntil(() => !result.current.loading);
@@ -125,20 +121,18 @@ describe("useCircles", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let outcome: any;
     await act(async () => {
-      outcome = await result.current.createCircle("New Circle", "", "u1");
+      outcome = await result.current.createCircle("Test Circle", "");
     });
 
     expect(outcome.error).toBeUndefined();
     await pollUntil(() => result.current.circles.length === 1);
-    expect(result.current.circles[0].name).toBe("New Circle");
+    expect(result.current.circles[0].name).toBe("Test Circle");
   });
 
   it("joinCircle returns error for invalid invite code", async () => {
-    const pgError = { message: "No rows returned" };
-
-    mockFrom
-      .mockReturnValueOnce(buildChain({ data: [], error: null }))    // mount fetch
-      .mockReturnValueOnce(buildChain({ data: null, error: pgError })); // lookup by invite_code
+    const pgError = { message: "invalid_invite_code" };
+    mockFrom.mockReturnValue(buildChain({ data: [], error: null }));
+    mockRpc.mockResolvedValueOnce({ data: null, error: pgError } as any);
 
     const { result } = renderHook(() => useCircles("u1"));
     await pollUntil(() => !result.current.loading);
@@ -152,14 +146,9 @@ describe("useCircles", () => {
     expect(outcome.error).toBeTruthy();
   });
 
-  it("joinCircle succeeds with valid invite code", async () => {
-    const circleId = "circle-999";
-
-    mockFrom
-      .mockReturnValueOnce(buildChain({ data: [], error: null }))                             // mount fetch
-      .mockReturnValueOnce(buildChain({ data: { id: circleId }, error: null }))               // circle lookup
-      .mockReturnValueOnce(buildChain({ data: null, error: null }))                            // insert member
-      .mockReturnValueOnce(buildChain({ data: [{ circles: { id: circleId, name: "Cool", description: null, invite_code: "VALIDCODE", created_by: "u2", created_at: null } }], error: null })); // re-fetch
+  it("joinCircle returns error when rpc returns null circleId", async () => {
+    mockFrom.mockReturnValue(buildChain({ data: [], error: null }));
+    mockRpc.mockResolvedValueOnce({ data: null, error: null } as any);
 
     const { result } = renderHook(() => useCircles("u1"));
     await pollUntil(() => !result.current.loading);
@@ -167,10 +156,110 @@ describe("useCircles", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let outcome: any;
     await act(async () => {
-      outcome = await result.current.joinCircle("VALIDCODE", "u1");
+      outcome = await result.current.joinCircle("NULLCODE", "u1");
+    });
+
+    expect(outcome.error).toBeTruthy();
+  });
+
+  it("joinCircle succeeds with valid invite code and refreshes list", async () => {
+    mockFrom
+      .mockReturnValueOnce(buildChain({ data: [], error: null }))
+      .mockReturnValueOnce(buildChain({ data: [{ circles: fakeCircle }], error: null }));
+    mockRpc.mockResolvedValueOnce({ data: "c1", error: null } as any);
+
+    const { result } = renderHook(() => useCircles("u1"));
+    await pollUntil(() => !result.current.loading);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let outcome: any;
+    await act(async () => {
+      outcome = await result.current.joinCircle("abc123", "u1");
     });
 
     expect(outcome.error).toBeUndefined();
-    expect(outcome.data).toEqual({ id: circleId });
+    expect(outcome.data).toEqual({ id: "c1" });
+    await pollUntil(() => result.current.circles.length === 1);
+  });
+
+  it("refetch re-runs the circles query", async () => {
+    mockFrom.mockReturnValue(buildChain({ data: [{ circles: fakeCircle }], error: null }));
+
+    const { result } = renderHook(() => useCircles("u1"));
+    await pollUntil(() => !result.current.loading);
+    expect(mockFrom).toHaveBeenCalledTimes(1);
+
+    await act(async () => { await result.current.refetch(); });
+    expect(mockFrom).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useCircleMembers
+// ---------------------------------------------------------------------------
+describe("useCircleMembers", () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it("does not fetch when circleId is undefined", async () => {
+    const { result } = renderHook(() => useCircleMembers(undefined));
+    await pollUntil(() => !result.current.loading);
+    expect(mockFrom).not.toHaveBeenCalled();
+    expect(result.current.members).toEqual([]);
+  });
+
+  it("fetches members with profiles", async () => {
+    const fakeMember = {
+      circle_id: "c1",
+      user_id: "u1",
+      role: "owner",
+      joined_at: null,
+      profiles: {
+        id: "u1", username: "user1", display_name: "User One",
+        avatar_url: null, created_at: null, updated_at: null,
+      },
+    };
+    mockFrom.mockReturnValue(buildChain({ data: [fakeMember], error: null }));
+
+    const { result } = renderHook(() => useCircleMembers("c1"));
+    await pollUntil(() => !result.current.loading);
+
+    expect(result.current.members).toHaveLength(1);
+    expect(result.current.members[0].user_id).toBe("u1");
+    expect(result.current.members[0].profiles.username).toBe("user1");
+    expect(result.current.members[0].role).toBe("owner");
+  });
+
+  it("handles multiple members", async () => {
+    const members = [
+      { circle_id: "c1", user_id: "u1", role: "owner", joined_at: null, profiles: { id: "u1", username: "alice", display_name: null, avatar_url: null, created_at: null, updated_at: null } },
+      { circle_id: "c1", user_id: "u2", role: "member", joined_at: null, profiles: { id: "u2", username: "bob", display_name: null, avatar_url: null, created_at: null, updated_at: null } },
+    ];
+    mockFrom.mockReturnValue(buildChain({ data: members, error: null }));
+
+    const { result } = renderHook(() => useCircleMembers("c1"));
+    await pollUntil(() => !result.current.loading);
+
+    expect(result.current.members).toHaveLength(2);
+    expect(result.current.members[1].profiles.username).toBe("bob");
+  });
+
+  it("returns empty array when data is null", async () => {
+    mockFrom.mockReturnValue(buildChain({ data: null, error: null }));
+
+    const { result } = renderHook(() => useCircleMembers("c1"));
+    await pollUntil(() => !result.current.loading);
+
+    expect(result.current.members).toEqual([]);
+  });
+
+  it("refetch re-queries members", async () => {
+    mockFrom.mockReturnValue(buildChain({ data: [], error: null }));
+
+    const { result } = renderHook(() => useCircleMembers("c1"));
+    await pollUntil(() => !result.current.loading);
+    expect(mockFrom).toHaveBeenCalledTimes(1);
+
+    await act(async () => { await result.current.refetch(); });
+    expect(mockFrom).toHaveBeenCalledTimes(2);
   });
 });
