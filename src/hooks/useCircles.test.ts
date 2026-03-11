@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, waitFor } from "vitest";
+import { renderHook, act } from "@testing-library/react";
 
 // ---------------------------------------------------------------------------
 // Supabase mock
