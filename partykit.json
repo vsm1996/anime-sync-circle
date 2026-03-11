@@ -1,5 +1,6 @@
 {
   "$schema": "https://www.partykit.io/schema.json",
   "name": "anime-sync-circle",
-  "main": "party/chat.ts"
+  "main": "party/chat.ts",
+  "compatibilityDate": "2026-03-11"
 }

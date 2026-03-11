@@ -1,10 +1,18 @@
 import { useState } from "react";
 import usePartySocket from "partysocket/react";
-import type { ChatMessage } from "../../party/chat";
+
+// Mirrors the ChatMessage interface in party/chat.ts — kept separate to avoid
+// bundling the server-only partykit/server package into the client build.
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  username: string;
+  avatarUrl: string | null;
+  content: string;
+  createdAt: string;
+}
 
 type ServerMsg = ChatMessage | { type: "history"; messages: ChatMessage[] };
-
-export type { ChatMessage };
 
 export function usePartyChat(
   circleId: string,
