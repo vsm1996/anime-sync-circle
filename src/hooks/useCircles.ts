@@ -25,44 +25,24 @@ export function useCircles(userId?: string) {
     setLoading(false);
   }
 
-  async function createCircle(name: string, description: string, createdBy: string) {
-    const { data, error } = await supabase
-      .from("circles")
-      .insert({ name, description, created_by: createdBy })
-      .select()
-      .single();
+  async function createCircle(name: string, description: string) {
+    const { data: circleId, error } = await supabase
+      .rpc("create_circle", { p_name: name, p_description: description });
 
-    if (error || !data) return { error };
-
-    // Add creator as owner
-    await supabase.from("circle_members").insert({
-      circle_id: data.id,
-      user_id: createdBy,
-      role: "owner",
-    });
+    if (error || !circleId) return { error };
 
     await fetchCircles();
-    return { data };
+    return { data: circleId };
   }
 
-  async function joinCircle(inviteCode: string, userId: string) {
-    const { data: circle, error } = await supabase
-      .from("circles")
-      .select("id")
-      .eq("invite_code", inviteCode)
-      .single();
+  async function joinCircle(inviteCode: string, _userId: string) {
+    const { data: circleId, error } = await supabase
+      .rpc("join_circle_by_invite", { p_invite_code: inviteCode });
 
-    if (error || !circle) return { error: error || new Error("Invalid invite code") };
+    if (error || !circleId) return { error: error || new Error("Invalid invite code") };
 
-    const { error: joinError } = await supabase.from("circle_members").insert({
-      circle_id: circle.id,
-      user_id: userId,
-      role: "member",
-    });
-
-    if (joinError) return { error: joinError };
     await fetchCircles();
-    return { data: circle };
+    return { data: { id: circleId } };
   }
 
   return { circles, loading, createCircle, joinCircle, refetch: fetchCircles };

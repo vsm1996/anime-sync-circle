@@ -22,7 +22,7 @@ export default function CirclesPage() {
     if (!user || !name.trim()) return;
     setSubmitting(true);
     setError("");
-    const { error } = await createCircle(name.trim(), description.trim(), user.id);
+    const { error } = await createCircle(name.trim(), description.trim());
     if (error) setError((error as any)?.message ?? "Failed to create circle. Please try again.");
     else { setShowCreate(false); setName(""); setDescription(""); }
     setSubmitting(false);
