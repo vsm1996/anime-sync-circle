@@ -7,6 +7,7 @@ import { useCircleMembers } from "@/hooks/useCircles";
 import ActivityFeed from "@/components/ActivityFeed";
 import PresenceBadge from "@/components/PresenceBadge";
 import AnimeSearchModal from "@/components/AnimeSearchModal";
+import CircleChat from "@/components/CircleChat";
 import { supabase } from "@/integrations/supabase/client";
 import { cacheAnime } from "@/lib/jikan";
 import type { Circle, JikanAnime } from "@/types";
@@ -22,9 +23,10 @@ import {
   Hash,
   Copy,
   Check,
+  MessageCircle,
 } from "lucide-react";
 
-type CircleTab = "watchlist" | "activity" | "members";
+type CircleTab = "watchlist" | "activity" | "members" | "chat";
 
 export default function CircleDetailPage() {
   const { circleId } = useParams<{ circleId: string }>();
@@ -71,6 +73,7 @@ export default function CircleDetailPage() {
 
   const tabs: { key: CircleTab; label: string; icon: React.ElementType }[] = [
     { key: "watchlist", label: "Watchlist", icon: List },
+    { key: "chat", label: "Chat", icon: MessageCircle },
     { key: "activity", label: "Activity", icon: Clock },
     { key: "members", label: "Members", icon: Users },
   ];
@@ -129,7 +132,7 @@ export default function CircleDetailPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className={`flex-1 ${activeTab === "chat" ? "overflow-hidden" : "overflow-auto p-6"}`}>
         {/* Watchlist tab */}
         {activeTab === "watchlist" && (
           <div>
@@ -257,6 +260,14 @@ export default function CircleDetailPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Chat tab */}
+        {activeTab === "chat" && circleId && (
+          <CircleChat
+            circleId={circleId}
+            user={profile ? { id: user!.id, username: profile.username, avatar_url: profile.avatar_url } : null}
+          />
         )}
 
         {/* Activity tab */}
