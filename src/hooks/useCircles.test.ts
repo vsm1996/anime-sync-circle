@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, waitFor } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
 // ---------------------------------------------------------------------------
@@ -31,6 +31,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 const mockFrom = vi.mocked(supabase.from);
 
+// Helper: wait until predicate passes (replaces waitFor)
+async function pollUntil(predicate: () => boolean, timeoutMs = 3000) {
+  const start = Date.now();
+  while (!predicate()) {
+    if (Date.now() - start > timeoutMs) throw new Error("Timeout waiting for condition");
+    await new Promise((r) => setTimeout(r, 10));
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -41,7 +50,7 @@ describe("useCircles", () => {
 
   it("does not fetch when userId is undefined", async () => {
     const { result } = renderHook(() => useCircles(undefined));
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await pollUntil(() => !result.current.loading);
     expect(mockFrom).not.toHaveBeenCalled();
     expect(result.current.circles).toEqual([]);
   });
@@ -58,7 +67,7 @@ describe("useCircles", () => {
     mockFrom.mockReturnValue(buildChain({ data: [{ circles: fakeCircle }], error: null }));
 
     const { result } = renderHook(() => useCircles("u1"));
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await pollUntil(() => !result.current.loading);
 
     expect(result.current.circles).toHaveLength(1);
     expect(result.current.circles[0].name).toBe("Test Circle");
@@ -69,7 +78,7 @@ describe("useCircles", () => {
     mockFrom.mockReturnValue(buildChain({ data: null, error: null }));
 
     const { result } = renderHook(() => useCircles("u1"));
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await pollUntil(() => !result.current.loading);
 
     expect(result.current.circles).toEqual([]);
   });
@@ -83,7 +92,7 @@ describe("useCircles", () => {
       .mockReturnValueOnce(buildChain({ data: null, error: pgError }));
 
     const { result } = renderHook(() => useCircles("u1"));
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await pollUntil(() => !result.current.loading);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let outcome: any;
@@ -95,17 +104,23 @@ describe("useCircles", () => {
   });
 
   it("createCircle succeeds and refreshes circles list", async () => {
-    const newCircle = { id: "c2", name: "New Circle", description: null, invite_code: "xyz", created_by: "u1", created_at: null };
+    const newCircle = {
+      id: "c2",
+      name: "New Circle",
+      description: null,
+      invite_code: "xyz",
+      created_by: "u1",
+      created_at: null,
+    };
 
-    // mount fetch → empty; insert → success; add member → success; re-fetch → new circle
     mockFrom
-      .mockReturnValueOnce(buildChain({ data: [], error: null }))             // initial fetch
-      .mockReturnValueOnce(buildChain({ data: newCircle, error: null }))      // insert circle
-      .mockReturnValueOnce(buildChain({ data: null, error: null }))            // add owner member
-      .mockReturnValueOnce(buildChain({ data: [{ circles: newCircle }], error: null })); // re-fetch
+      .mockReturnValueOnce(buildChain({ data: [], error: null }))                          // initial fetch
+      .mockReturnValueOnce(buildChain({ data: newCircle, error: null }))                   // insert circle
+      .mockReturnValueOnce(buildChain({ data: null, error: null }))                        // add owner member
+      .mockReturnValueOnce(buildChain({ data: [{ circles: newCircle }], error: null }));   // re-fetch
 
     const { result } = renderHook(() => useCircles("u1"));
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await pollUntil(() => !result.current.loading);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let outcome: any;
@@ -114,7 +129,7 @@ describe("useCircles", () => {
     });
 
     expect(outcome.error).toBeUndefined();
-    expect(result.current.circles).toHaveLength(1);
+    await pollUntil(() => result.current.circles.length === 1);
     expect(result.current.circles[0].name).toBe("New Circle");
   });
 
@@ -122,11 +137,11 @@ describe("useCircles", () => {
     const pgError = { message: "No rows returned" };
 
     mockFrom
-      .mockReturnValueOnce(buildChain({ data: [], error: null }))   // mount fetch
+      .mockReturnValueOnce(buildChain({ data: [], error: null }))    // mount fetch
       .mockReturnValueOnce(buildChain({ data: null, error: pgError })); // lookup by invite_code
 
     const { result } = renderHook(() => useCircles("u1"));
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    await pollUntil(() => !result.current.loading);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let outcome: any;
@@ -135,5 +150,27 @@ describe("useCircles", () => {
     });
 
     expect(outcome.error).toBeTruthy();
+  });
+
+  it("joinCircle succeeds with valid invite code", async () => {
+    const circleId = "circle-999";
+
+    mockFrom
+      .mockReturnValueOnce(buildChain({ data: [], error: null }))                             // mount fetch
+      .mockReturnValueOnce(buildChain({ data: { id: circleId }, error: null }))               // circle lookup
+      .mockReturnValueOnce(buildChain({ data: null, error: null }))                            // insert member
+      .mockReturnValueOnce(buildChain({ data: [{ circles: { id: circleId, name: "Cool", description: null, invite_code: "VALIDCODE", created_by: "u2", created_at: null } }], error: null })); // re-fetch
+
+    const { result } = renderHook(() => useCircles("u1"));
+    await pollUntil(() => !result.current.loading);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let outcome: any;
+    await act(async () => {
+      outcome = await result.current.joinCircle("VALIDCODE", "u1");
+    });
+
+    expect(outcome.error).toBeUndefined();
+    expect(outcome.data).toEqual({ id: circleId });
   });
 });
