@@ -9,16 +9,13 @@ export default function AuthCallbackPage() {
     // getSession() races with hash fragment processing — use onAuthStateChange instead,
     // which only fires after Supabase has finished parsing the #access_token from the URL.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) {
+      // INITIAL_SESSION fires if the hash was processed before this effect ran
+      // SIGNED_IN fires if it was processed after
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && session) {
         navigate("/dashboard", { replace: true });
       } else if (event === "SIGNED_OUT") {
         navigate("/login", { replace: true });
       }
-    });
-
-    // Fallback: if a session already exists (e.g. user revisits the callback URL)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/dashboard", { replace: true });
     });
 
     return () => subscription.unsubscribe();
