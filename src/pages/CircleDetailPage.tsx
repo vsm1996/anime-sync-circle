@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { useParams, useNavigate, NavLink } from "react-router-dom";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useSharedWatchlist } from "@/hooks/useSharedWatchlist";
@@ -7,7 +7,7 @@ import { useCircleMembers } from "@/hooks/useCircles";
 import ActivityFeed from "@/components/ActivityFeed";
 import PresenceBadge from "@/components/PresenceBadge";
 import AnimeSearchModal from "@/components/AnimeSearchModal";
-import CircleChat from "@/components/CircleChat";
+const CircleChat = lazy(() => import("@/components/CircleChat"));
 import { supabase } from "@/integrations/supabase/client";
 import { cacheAnime } from "@/lib/jikan";
 import type { Circle, JikanAnime } from "@/types";
@@ -81,7 +81,7 @@ export default function CircleDetailPage() {
   return (
     <div className="flex flex-col min-h-full">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-border">
+      <div className="px-4 md:px-6 py-4 border-b border-border">
         <div className="flex items-center gap-3 mb-2">
           <button
             onClick={() => navigate("/circles")}
@@ -103,17 +103,17 @@ export default function CircleDetailPage() {
           {circle?.invite_code && (
             <button
               onClick={copyCode}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-muted border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted border border-border rounded-lg text-xs text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
             >
               <Hash className="w-3 h-3" />
-              <code>{circle.invite_code}</code>
+              <code className="hidden sm:inline">{circle.invite_code}</code>
               {copied ? <Check className="w-3 h-3 text-accent" /> : <Copy className="w-3 h-3" />}
             </button>
           )}
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1">
+        <div className="flex gap-1 overflow-x-auto">
           {tabs.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -132,7 +132,7 @@ export default function CircleDetailPage() {
       </div>
 
       {/* Content */}
-      <div className={`flex-1 ${activeTab === "chat" ? "overflow-hidden" : "overflow-auto p-6"}`}>
+      <div className={`flex-1 ${activeTab === "chat" ? "overflow-hidden" : "overflow-auto p-4 md:p-6"}`}>
         {/* Watchlist tab */}
         {activeTab === "watchlist" && (
           <div>
@@ -264,10 +264,12 @@ export default function CircleDetailPage() {
 
         {/* Chat tab */}
         {activeTab === "chat" && circleId && (
-          <CircleChat
-            circleId={circleId}
-            user={profile ? { id: user!.id, username: profile.username, avatar_url: profile.avatar_url } : null}
-          />
+          <Suspense fallback={<div className="flex items-center justify-center h-full text-muted-foreground text-sm">Loading chat…</div>}>
+            <CircleChat
+              circleId={circleId}
+              user={profile ? { id: user!.id, username: profile.username, avatar_url: profile.avatar_url } : null}
+            />
+          </Suspense>
         )}
 
         {/* Activity tab */}

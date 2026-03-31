@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useWatchEntries } from "@/hooks/useWatchEntries";
 import { useCircles } from "@/hooks/useCircles";
@@ -29,7 +29,24 @@ export default function DashboardPage() {
   const firstCircle = circles[0];
   const { activities, loading: actLoading } = useActivityFeed(firstCircle?.id);
 
-  const filteredEntries = entries.filter((e) => e.status === activeStatus);
+  const filteredEntries = useMemo(
+    () => entries.filter((e) => e.status === activeStatus),
+    [entries, activeStatus]
+  );
+
+  const counts = useMemo(() => ({
+    watching: entries.filter((e) => e.status === "watching").length,
+    completed: entries.filter((e) => e.status === "completed").length,
+    plan_to_watch: entries.filter((e) => e.status === "plan_to_watch").length,
+  }), [entries]);
+
+  const tabCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const e of entries) {
+      map[e.status] = (map[e.status] || 0) + 1;
+    }
+    return map;
+  }, [entries]);
 
   async function handleAddAnime(anime: JikanAnime) {
     if (!user) return;
@@ -37,16 +54,10 @@ export default function DashboardPage() {
     await addEntry(user.id, anime.mal_id, "plan_to_watch");
   }
 
-  const counts = {
-    watching: entries.filter((e) => e.status === "watching").length,
-    completed: entries.filter((e) => e.status === "completed").length,
-    plan_to_watch: entries.filter((e) => e.status === "plan_to_watch").length,
-  };
-
   return (
     <div className="flex flex-col min-h-full">
       {/* Header */}
-      <div className="px-6 py-5 border-b border-border">
+      <div className="px-4 md:px-6 py-4 md:py-5 border-b border-border">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-foreground">
@@ -72,7 +83,7 @@ export default function DashboardPage() {
         {/* Watchlist panel */}
         <div className="flex-1 flex flex-col min-w-0 overflow-auto">
           {/* Status tabs */}
-          <div className="flex gap-1 px-6 pt-4 overflow-x-auto">
+          <div className="flex gap-1 px-4 md:px-6 pt-4 overflow-x-auto">
             {STATUS_TABS.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -85,9 +96,9 @@ export default function DashboardPage() {
               >
                 <Icon className="w-3.5 h-3.5" />
                 {label}
-                {entries.filter((e) => e.status === key).length > 0 && (
+                {(tabCounts[key] || 0) > 0 && (
                   <span className={`ml-1 ${activeStatus === key ? "opacity-70" : "opacity-50"}`}>
-                    {entries.filter((e) => e.status === key).length}
+                    {tabCounts[key]}
                   </span>
                 )}
               </button>
@@ -95,7 +106,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Anime grid */}
-          <div className="p-6">
+          <div className="p-4 md:p-6">
             {loading ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {[1, 2, 3, 4].map((i) => (
@@ -143,9 +154,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Activity feed sidebar */}
+        {/* Activity feed sidebar — hidden on mobile */}
         {firstCircle && (
-          <div className="w-72 flex-shrink-0 border-l border-border overflow-auto">
+          <div className="hidden lg:block w-72 flex-shrink-0 border-l border-border overflow-auto">
             <div className="px-4 py-4 border-b border-border">
               <h3 className="font-semibold text-foreground text-sm">Circle Activity</h3>
               <p className="text-xs text-muted-foreground mt-0.5">{firstCircle.name}</p>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Plus, Star, ChevronUp, ChevronDown, Tv, CheckCircle } from "lucide-react";
 import type { WatchEntry, AnimeCache, WatchStatus } from "@/types";
 
@@ -26,7 +26,7 @@ interface AnimeCardProps {
   onRate: (rating: number) => void;
 }
 
-export default function AnimeCard({
+const AnimeCard = memo(function AnimeCard({
   entry,
   anime,
   onUpdateStatus,
@@ -151,4 +151,6 @@ export default function AnimeCard({
       </div>
     </div>
   );
-}
+});
+
+export default AnimeCard;

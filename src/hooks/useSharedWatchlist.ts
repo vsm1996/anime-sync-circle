@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { SharedWatchlistItem, AnimeCache, Profile } from "@/types";
 
@@ -6,17 +6,13 @@ export function useSharedWatchlist(circleId?: string, userId?: string) {
   const [items, setItems] = useState<SharedWatchlistItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!circleId) { setLoading(false); return; }
-    fetchItems();
-  }, [circleId]);
-
-  async function fetchItems() {
+  const fetchItems = useCallback(async () => {
+    if (!circleId) return;
     setLoading(true);
     const { data } = await supabase
       .from("shared_watchlists")
       .select("*")
-      .eq("circle_id", circleId!)
+      .eq("circle_id", circleId)
       .order("votes", { ascending: false });
 
     if (!data) { setLoading(false); return; }
@@ -52,46 +48,63 @@ export function useSharedWatchlist(circleId?: string, userId?: string) {
       })) as SharedWatchlistItem[]
     );
     setLoading(false);
-  }
+  }, [circleId, userId]);
 
-  async function addToWatchlist(malId: number, addedBy: string) {
+  useEffect(() => {
+    if (!circleId) { setLoading(false); return; }
+    fetchItems();
+  }, [fetchItems]);
+
+  const addToWatchlist = useCallback(async (malId: number, addedBy: string) => {
     const { error } = await supabase.from("shared_watchlists").upsert(
       { circle_id: circleId, mal_id: malId, added_by: addedBy },
       { onConflict: "circle_id,mal_id" }
     );
     if (!error) await fetchItems();
     return { error };
-  }
+  }, [circleId, fetchItems]);
 
-  async function removeFromWatchlist(itemId: string) {
+  const removeFromWatchlist = useCallback(async (itemId: string) => {
     const { error } = await supabase
       .from("shared_watchlists")
       .delete()
       .eq("id", itemId);
     if (!error) await fetchItems();
     return { error };
-  }
+  }, [fetchItems]);
 
-  async function vote(watchlistId: string, voteValue: 1 | -1, userId: string) {
+  const vote = useCallback(async (watchlistId: string, voteValue: 1 | -1, votingUserId: string) => {
     const existingItem = items.find((i) => i.id === watchlistId);
     const currentVote = existingItem?.userVote;
+    const removing = currentVote === voteValue;
 
-    if (currentVote === voteValue) {
-      // Remove vote
+    // Optimistic update
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== watchlistId) return item;
+        const delta = removing ? -voteValue : currentVote ? voteValue - currentVote : voteValue;
+        return {
+          ...item,
+          votes: (item.votes || 0) + delta,
+          userVote: removing ? null : voteValue,
+        };
+      }).sort((a, b) => (b.votes || 0) - (a.votes || 0))
+    );
+
+    if (removing) {
       await supabase
         .from("watchlist_votes")
         .delete()
         .eq("watchlist_id", watchlistId)
-        .eq("user_id", userId);
+        .eq("user_id", votingUserId);
 
       await supabase
         .from("shared_watchlists")
         .update({ votes: (existingItem?.votes || 0) - voteValue })
         .eq("id", watchlistId);
     } else {
-      // Add/change vote
       await supabase.from("watchlist_votes").upsert(
-        { watchlist_id: watchlistId, user_id: userId, vote: voteValue },
+        { watchlist_id: watchlistId, user_id: votingUserId, vote: voteValue },
         { onConflict: "watchlist_id,user_id" }
       );
 
@@ -101,9 +114,7 @@ export function useSharedWatchlist(circleId?: string, userId?: string) {
         .update({ votes: (existingItem?.votes || 0) + delta })
         .eq("id", watchlistId);
     }
-
-    await fetchItems();
-  }
+  }, [items]);
 
   return { items, loading, addToWatchlist, removeFromWatchlist, vote, refetch: fetchItems };
 }

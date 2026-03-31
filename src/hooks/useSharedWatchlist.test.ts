@@ -212,8 +212,7 @@ describe("useSharedWatchlist", () => {
     // vote: upsert watchlist_votes + update shared_watchlists votes count
     mockFrom.mockReturnValueOnce(buildChain({ data: null, error: null })); // upsert vote
     mockFrom.mockReturnValueOnce(buildChain({ data: null, error: null })); // update votes
-    const upvotedItem = { ...fakeItem, votes: 1 };
-    mockFetch([upvotedItem], { votes: [{ watchlist_id: "w1", vote: 1 }] });
+    // No re-fetch mock needed — state is updated optimistically
 
     const { result } = renderHook(() => useSharedWatchlist("c1", "u1"));
     await pollUntil(() => !result.current.loading);
@@ -222,7 +221,7 @@ describe("useSharedWatchlist", () => {
       await result.current.vote("w1", 1, "u1");
     });
 
-    await pollUntil(() => result.current.items[0]?.userVote === 1);
+    expect(result.current.items[0].userVote).toBe(1);
     expect(result.current.items[0].votes).toBe(1);
   });
 
@@ -232,7 +231,7 @@ describe("useSharedWatchlist", () => {
     // toggle off: delete vote + update votes
     mockFrom.mockReturnValueOnce(buildChain({ data: null, error: null })); // delete vote
     mockFrom.mockReturnValueOnce(buildChain({ data: null, error: null })); // update votes
-    mockFetch([fakeItem], { votes: [] });
+    // No re-fetch mock needed — state is updated optimistically
 
     const { result } = renderHook(() => useSharedWatchlist("c1", "u1"));
     await pollUntil(() => !result.current.loading);
@@ -242,27 +241,27 @@ describe("useSharedWatchlist", () => {
       await result.current.vote("w1", 1, "u1");
     });
 
-    await pollUntil(() => result.current.items[0]?.userVote === null);
+    expect(result.current.items[0].userVote).toBeNull();
     expect(result.current.items[0].votes).toBe(0);
   });
 
   it("vote changes from upvote to downvote", async () => {
     const upvotedItem = { ...fakeItem, votes: 1 };
     mockFetch([upvotedItem], { votes: [{ watchlist_id: "w1", vote: 1 }] });
-    // change: upsert vote + update votes
+    // change: upsert vote + update votes (DB ops consumed, no re-fetch with optimistic updates)
     mockFrom.mockReturnValueOnce(buildChain({ data: null, error: null })); // upsert vote
     mockFrom.mockReturnValueOnce(buildChain({ data: null, error: null })); // update votes
-    const downvotedItem = { ...fakeItem, votes: -1 };
-    mockFetch([downvotedItem], { votes: [{ watchlist_id: "w1", vote: -1 }] });
 
     const { result } = renderHook(() => useSharedWatchlist("c1", "u1"));
     await pollUntil(() => !result.current.loading);
+    expect(result.current.items[0].userVote).toBe(1);
 
     await act(async () => {
       await result.current.vote("w1", -1, "u1");
     });
 
-    await pollUntil(() => result.current.items[0]?.userVote === -1);
+    // Optimistic update should have applied immediately
+    expect(result.current.items[0].userVote).toBe(-1);
     expect(result.current.items[0].votes).toBe(-1);
   });
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Circle, CircleMember, Profile } from "@/types";
 
@@ -6,26 +6,27 @@ export function useCircles(userId?: string) {
   const [circles, setCircles] = useState<Circle[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!userId) { setLoading(false); return; }
-    fetchCircles();
-  }, [userId]);
-
-  async function fetchCircles() {
+  const fetchCircles = useCallback(async () => {
+    if (!userId) return;
     setLoading(true);
     const { data } = await supabase
       .from("circle_members")
       .select("circle_id, circles(*)")
-      .eq("user_id", userId!);
+      .eq("user_id", userId);
 
     if (data) {
       const c = data.map((d: any) => d.circles).filter(Boolean) as Circle[];
       setCircles(c);
     }
     setLoading(false);
-  }
+  }, [userId]);
 
-  async function createCircle(name: string, description: string) {
+  useEffect(() => {
+    if (!userId) { setLoading(false); return; }
+    fetchCircles();
+  }, [fetchCircles]);
+
+  const createCircle = useCallback(async (name: string, description: string) => {
     const { data: circleId, error } = await supabase
       .rpc("create_circle", { p_name: name, p_description: description });
 
@@ -33,9 +34,9 @@ export function useCircles(userId?: string) {
 
     await fetchCircles();
     return { data: circleId };
-  }
+  }, [fetchCircles]);
 
-  async function joinCircle(inviteCode: string, _userId: string) {
+  const joinCircle = useCallback(async (inviteCode: string, _userId: string) => {
     const { data: circleId, error } = await supabase
       .rpc("join_circle_by_invite", { p_invite_code: inviteCode });
 
@@ -43,7 +44,7 @@ export function useCircles(userId?: string) {
 
     await fetchCircles();
     return { data: { id: circleId } };
-  }
+  }, [fetchCircles]);
 
   return { circles, loading, createCircle, joinCircle, refetch: fetchCircles };
 }
@@ -52,20 +53,21 @@ export function useCircleMembers(circleId?: string) {
   const [members, setMembers] = useState<(CircleMember & { profiles: Profile })[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!circleId) { setLoading(false); return; }
-    fetchMembers();
-  }, [circleId]);
-
-  async function fetchMembers() {
+  const fetchMembers = useCallback(async () => {
+    if (!circleId) return;
     const { data } = await supabase
       .from("circle_members")
       .select("*, profiles(*)")
-      .eq("circle_id", circleId!);
+      .eq("circle_id", circleId);
 
     if (data) setMembers(data as any);
     setLoading(false);
-  }
+  }, [circleId]);
+
+  useEffect(() => {
+    if (!circleId) { setLoading(false); return; }
+    fetchMembers();
+  }, [fetchMembers]);
 
   return { members, loading, refetch: fetchMembers };
 }

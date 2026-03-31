@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, X, Plus, Loader2 } from "lucide-react";
 import { searchAnime, cacheAnime } from "@/lib/jikan";
+import { useDebounce } from "@/hooks/useDebounce";
 import type { JikanAnime } from "@/types";
 
 interface AnimeSearchModalProps {
@@ -20,8 +21,8 @@ export default function AnimeSearchModal({
   const [results, setResults] = useState<JikanAnime[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   const inputRef = useRef<HTMLInputElement>(null);
+  const debouncedQuery = useDebounce(query, 500);
 
   useEffect(() => {
     if (isOpen) {
@@ -33,21 +34,16 @@ export default function AnimeSearchModal({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!query.trim()) { setResults([]); return; }
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const data = await searchAnime(query);
-        setResults(data.slice(0, 10));
-      } catch {
-        setError("Failed to search. Please try again.");
-      }
-      setLoading(false);
-    }, 500);
-    return () => clearTimeout(debounceRef.current);
-  }, [query]);
+    if (!debouncedQuery.trim()) { setResults([]); return; }
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    searchAnime(debouncedQuery)
+      .then((data) => { if (!cancelled) setResults(data.slice(0, 10)); })
+      .catch(() => { if (!cancelled) setError("Failed to search. Please try again."); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [debouncedQuery]);
 
   async function handleSelect(anime: JikanAnime) {
     await cacheAnime(anime);
