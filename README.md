@@ -1,73 +1,45 @@
-# Welcome to your Lovable project
+# Anime Sync Circle
 
-## Project info
+Live anime watch parties with synchronized playback and persistent chat rooms.
 
-**URL**: [https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID](https://anime-sync-circle.vercel.app/login)
+## What It Does
 
-## How can I edit this code?
+Anime Sync Circle lets groups watch anime together in real-time, with everyone's video perfectly synchronized. The live chat room stays available even after the watch party ends, creating a persistent space for the community around that viewing session.
 
-There are several ways of editing your application.
+## Key Features
 
-**Use Lovable**
+- **Real-time synchronization** — Video playback stays in sync across all viewers, no manual coordination needed
+- **Live chat** — Built on PartyKit for seamless, real-time messaging during watch parties
+- **Persistent rooms** — Chat history is saved, so the community can continue discussing after the episode ends
+- **Simple join flow** — Share a room code, join, sync, watch
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Tech Stack
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Frontend**: React + TypeScript, Vite for fast development
+- **Real-time**: PartyKit for WebSocket-based chat and synchronization
+- **Styling**: Tailwind CSS + shadcn/ui
+- **Database**: Supabase for persistent room data
+- **Deployment**: Vercel
 
-**Use your preferred IDE**
+## Why This Matters
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Most watch party tools solve the chat problem OR the sync problem. This bridges both, using PartyKit's durable rooms to make chat persistence a first-class feature instead of an afterthought. The architecture means chat rooms outlive individual viewing sessions.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Local Development
 
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+pnpm install
+pnpm dev
 ```
 
-**Edit a file directly in GitHub**
+Then visit `http://localhost:5173`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Deployment
 
-**Use GitHub Codespaces**
+Deployed at [anime-sync-circle.vercel.app](https://anime-sync-circle.vercel.app)
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## What I Learned
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- **PartyKit for persistence**: Using a WebSocket-backed room server to maintain chat state across client reconnections
+- **Sync algorithm**: Keeping video playback within tolerance windows instead of frame-perfect sync, which is more practical and user-friendly
+- **Real-time UX**: How to handle network latency gracefully in a synchronized experience
